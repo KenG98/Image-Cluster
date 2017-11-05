@@ -5,6 +5,7 @@ from random import randint
 
 # the image we're dealing with
 
+print("- reading the image")
 img = mpimg.imread('./img/bunny.jpg')
 
 # calculate euclidean distance
@@ -27,10 +28,11 @@ pixels = []
 
 # populate pixel array
 
+print("- getting all the pixel values")
 for y in range(len(img)):
     for x in range(len(img[y])):
         color = img[y][x]
-        pixels.append([x, y, *color])
+        pixels.append((x, y, *color))
         
 height = len(img)
 width = len(img[0])
@@ -42,8 +44,9 @@ max_iter = 500
 
 # start with k random centroids
 
-centroids = [[randint(0, width-1), randint(0,height-1), 
-    randint(0,255), randint(0,255), randint(0,255)] for _ in range(k)]
+print("- generating random centroids")
+centroids = [(randint(0, width-1), randint(0,height-1), 
+    randint(0,255), randint(0,255), randint(0,255)) for _ in range(k)]
 
 # pixels grouped by centroid
 
@@ -59,15 +62,19 @@ def which_centroid(p):
         if this_dist < dist:
             dist = this_dist
             result = c
-    return c
+    return result
 
 # assign each pixel to a centroid
-for p in pixels:
-    c = which_centroid(p)
-    g_pix[c].add(p)
+print("- assigning each pixel to a centroid")
+for p in range(len(pixels)):
+    if p % 100000 == 0:
+        print(p)
+    c = which_centroid(pixels[p])
+    g_pix[c].add(pixels[p])
 
 # calculate new centroid positions
 def adjust_centroids():
+    print("- moving centroids around")
     for i in range(k):
         centroid_pix = g_pix[i]
         avg = [0] * 5
@@ -75,36 +82,45 @@ def adjust_centroids():
            avg = add_vecs(avg, pix)
         for i in range(len(avg)):
             avg[i] /= len(centroid_pix)
-        centroids[i] = avg
+        centroids[i] = tuple(avg)
         
 # move pixels to their new centroid
+# NOTE TODO this function takes the longest
+# find a more efficient way (maybe a loop through pixels 
+# then check to see if it's in the right group and if not make a change?)
 def move_pix():
+    print("- moving pixels around")
+    was_change = False
+    global g_pix
+    new_g_pix = [set() for _ in range(k)]
     # for every centroid
     for cent in range(k):
         # for every pixel in that centroid
-        for pix in len(g_pix[cent]):
+        for pix in g_pix[cent]:
             # which centroid should this pixel be with?
-            new_cent = which_centroid(g_pix[pix])
+            new_cent = which_centroid(pix)
+            new_g_pix[new_cent].add(pix)
             # if the centroid it should be at isn't the current one
             if new_cent != cent:
-                temp = g_pix[pix]
-                g_pix[cent].remove(g_pix[pix])
-                g_pix[new_cent].add(temp)
+                was_change = True
+    g_pix = new_g_pix
+    return was_change
 
 # make a value copy of the g_pix array of sets. Used to test if 
 # the centroid groups have changed
-def copy_pixels_groups():
-    return [{pixel for pixel in group} for group in g_pix]
+'''
+def copy_pixel_groups():
+    return [group for group in g_pix]
+'''
 
 # repeat until there's convergence or we need to be done
 # do this with two lists which swap or maybe keep it all in g_pix? 
 # think about the best way
 # returns true if there was a change, false otherwise
 def iterate():
-    old_pix = copy_pixel_groups()
     adjust_centroids()
-    move_pix()
-    return old_pix != g_pix
+    was_change = move_pix()
+    return was_change
 
 def cluster():
     iters = 0
@@ -112,8 +128,7 @@ def cluster():
     while iters < max_iter and was_change:
         was_change = iterate()
         iters += 1
-        if iters % 100 == 0:
-            print("iteration ", iters)
+        print("iteration ", iters)
 
 cluster()
 
