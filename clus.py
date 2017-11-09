@@ -6,7 +6,7 @@ from random import randint
 # the image we're dealing with
 
 print("- reading the image")
-img = mpimg.imread('./img/bunny.jpg')
+img = mpimg.imread('./img/bunny copy.jpg')
 
 # calculate euclidean distance
 
@@ -39,8 +39,8 @@ width = len(img[0])
 
 # number of clusters, other settings
 
-k = 5
-max_iter = 500
+k = 10
+max_iter = 15
 
 # start with k random centroids
 
@@ -81,29 +81,29 @@ def adjust_centroids():
         for pix in centroid_pix:
            avg = add_vecs(avg, pix)
         for i in range(len(avg)):
-            avg[i] /= len(centroid_pix)
+            if len(centroid_pix) != 0:
+                avg[i] /= len(centroid_pix)
         centroids[i] = tuple(avg)
         
+def which_centroid_current(pix):
+    for i in range(k):
+        if pix in g_pix[i]:
+            return i
+    return None
+
 # move pixels to their new centroid
 # NOTE TODO this function takes the longest
-# find a more efficient way (maybe a loop through pixels 
-# then check to see if it's in the right group and if not make a change?)
 def move_pix():
     print("- moving pixels around")
     was_change = False
-    global g_pix
-    new_g_pix = [set() for _ in range(k)]
-    # for every centroid
-    for cent in range(k):
-        # for every pixel in that centroid
-        for pix in g_pix[cent]:
-            # which centroid should this pixel be with?
-            new_cent = which_centroid(pix)
-            new_g_pix[new_cent].add(pix)
-            # if the centroid it should be at isn't the current one
-            if new_cent != cent:
-                was_change = True
-    g_pix = new_g_pix
+    # for every pixel
+    for pix in pixels:
+        new_cent = which_centroid(pix)
+        if pix not in g_pix[new_cent]:
+            was_change = True
+            current_cent = which_centroid_current(pix)
+            g_pix[current_cent].remove(pix)
+            g_pix[new_cent].add(pix)
     return was_change
 
 # make a value copy of the g_pix array of sets. Used to test if 
@@ -133,13 +133,17 @@ def cluster():
 cluster()
 
 # load the image again
-new_img = mpimg.imread('./img/bunny.jpg')
+new_img = mpimg.imread('./img/bunny copy.jpg')
+new_img.setflags(write=1)
 # draw the result over the current new image
 color = 0
 for pix_group in g_pix:
     color_shade = color / (k - 1) * 255
+    color += 1
     for pix in pix_group:
-        new_img[pix[1]][pix[0]] = [color_shade, color_shade, color_shade]
+        new_img[pix[1]][pix[0]][0] = color_shade
+        new_img[pix[1]][pix[0]][1] = color_shade
+        new_img[pix[1]][pix[0]][2] = color_shade
 
 fig = plt.figure()
 a=fig.add_subplot(1,2,1)
